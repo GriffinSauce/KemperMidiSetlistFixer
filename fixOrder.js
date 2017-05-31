@@ -4,6 +4,9 @@ const MIDIFile = require('midifile');
 const MIDIEvents = require("midievents");
 const arrayBufferToBuffer = require('arraybuffer-to-buffer');
 
+const inputFolder = './input/';
+const outputFolder = './output/';
+const backupFolder = './backup/';
 const songs = [
     '--ignore--',
     '--ignore--',
@@ -25,25 +28,32 @@ const songs = [
 songs.forEach(fixOrder);
 
 function fixOrder(songName, index) {
-    const path = `./input/${songName}.mid`;
-    const outPath = `./output/${songName}.mid`;
+    const fileName = `${songName}.mid`;
+    const path = `${inputFolder}${fileName}`;
     if (!fs.existsSync(path)) {
         console.log(`No file for ${songName}`);
         return;
     }
+
+    createBackup(fileName);
 
     const midiFile = getMidiFile(path);
     const { events, previousIndex } = changeSongIndex(midiFile.getTrackEvents(0), index);
     midiFile.setTrackEvents(0, events);
 
     console.log(`Changed index from ${previousIndex} to ${index} for "${songName}"`);
-    writeMidiFile(outPath, midiFile);
+    writeMidiFile(fileName, midiFile);
 }
 
 function getMidiFile(path) {
     const inputBuffer = fs.readFileSync(path);
     const inputArrayBuffer = new Uint8Array(inputBuffer).buffer
     return new MIDIFile(inputArrayBuffer);
+}
+
+function createBackup(fileName) {
+    const dateString = (new Date()).toISOString().replace(/\D+/g, '_')
+    fs.copySync(`${inputFolder}${fileName}`, `${backupFolder}${dateString}${fileName}`);
 }
 
 // Has sideeffects, yolo
@@ -61,8 +71,8 @@ function changeSongIndex(events, index) {
     return { events, previousIndex };
 }
 
-function writeMidiFile(path, midiFile) {
+function writeMidiFile(fileName, midiFile) {
     const outputArrayBuffer = midiFile.getContent();
-    mkdirp.sync('./output');
-    fs.writeFileSync(path, arrayBufferToBuffer(outputArrayBuffer));
+    mkdirp.sync(outputFolder);
+    fs.writeFileSync(`${outputFolder}${fileName}`, arrayBufferToBuffer(outputArrayBuffer));
 }
